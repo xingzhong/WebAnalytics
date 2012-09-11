@@ -24,15 +24,17 @@ import pickle
 import time
 
 
-def getFriendList(api, screen_name='xxingzhong'):
+def getFriendList(api, screen_name='HornbyLucy'):
     # given a screen_name, list all his friends and followers' id
+    print "getFriendList"
     friends = api.friends_ids(screen_name)
     followers = api.followers_ids(screen_name)
     users = list(set(friends) | set(followers))
-    return users[1:5]
+    return users[1:15]
 
 
 def recordTimeLine(api, data, uid):
+    print "recordTimeLine"
     if data.has_key(uid):
         return 1
     user = api.get_user(uid)
@@ -66,10 +68,12 @@ def saveData(data, name='bia660.pkl'):
     return 1
     
 
-def thread(api, data, screen_name='xxingzhong', depth=2):
+def thread(api, data, screen_name='xxingzhong', depth=3):
+    print "thread"
     if depth < 0:
         return 1
     depth = depth - 1
+    print '\t'*(3-depth),
     print screen_name
     for f in getFriendList(api, screen_name):
         recordTimeLine(api, data, f)
@@ -107,11 +111,11 @@ if __name__ == '__main__':
                 secs = restart - time.time()
                 print "sleep %s s"%secs
                 pp.pprint( data )
-                sleep(secs+1)
+                time.sleep(secs+1)
                 print "wakeup"
         pp.pprint( data )
         saveData(data)
-    
+        break
     
 
 
