@@ -21,17 +21,18 @@
 import tweepy
 import pprint
 import pickle
+import time
 
 
-def getFriendList(screen_name='xxingzhong'):
+def getFriendList(api, screen_name='xxingzhong'):
     # given a screen_name, list all his friends and followers' id
     friends = api.friends_ids(screen_name)
     followers = api.followers_ids(screen_name)
     users = list(set(friends) | set(followers))
-    return users
+    return users[1:5]
 
 
-def recordTimeLine(data, uid):
+def recordTimeLine(api, data, uid):
     if data.has_key(uid):
         return 1
     user = api.get_user(uid)
@@ -65,6 +66,21 @@ def saveData(data, name='bia660.pkl'):
     return 1
     
 
+def thread(api, data, screen_name='xxingzhong', depth=2):
+    if depth < 0:
+        return 1
+    depth = depth - 1
+    print screen_name
+    for f in getFriendList(api, screen_name):
+        recordTimeLine(api, data, f)
+        user = api.get_user(f)
+        thread(api, data, user.screen_name, depth)
+
+def getLimit(api):
+    limit = api.rate_limit_status()
+    pp.pprint(limit)
+    return limit['remaining_hits'] , limit['reset_time_in_seconds']
+
 if __name__ == '__main__':
     print "Hello Stevens"
     # constant key/secret for twitter app
@@ -78,18 +94,25 @@ if __name__ == '__main__':
     auth.set_access_token(access_token, access_token_secret)
     api = tweepy.API(auth)
     pp = pprint.PrettyPrinter(indent=2)
-    burnin = 15
-    try :
-        pp.pprint( api.rate_limit_status() )
-    except :
-        print "API Wrong"
-    data = loadData()
-    for f in getFriendList():
-        burnin = burnin - 1
-        if burnin > 0 :
-            recordTimeLine(data, f)
-    pp.pprint( data )
-    saveData(data)
+    
+    while(1):
+        data = loadData()
+        try :
+            thread(api, data)
+        except :
+            print "API Wrong"
+            saveData(data)
+            remain, restart = getLimit(api)
+            if remain < 1 :
+                secs = restart - time.time()
+                print "sleep %s s"%secs
+                pp.pprint( data )
+                sleep(secs+1)
+                print "wakeup"
+        pp.pprint( data )
+        saveData(data)
+    
+    
 
 
 
