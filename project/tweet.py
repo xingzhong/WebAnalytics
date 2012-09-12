@@ -41,7 +41,7 @@ def recordTimeLine(api, data, uid):
     items = []
     if user.geo_enabled:
         print "getTimeline"
-        timeline = api.user_timeline(uid)
+        timeline = api.user_timeline(uid, count=40)
         for tl in timeline:
             if tl.coordinates:
                 coor = tl.coordinates['coordinates']
