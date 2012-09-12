@@ -2,7 +2,8 @@
 # Visualize the twitter data
 # Xingzhong Xu (xxu7@stevens.edus)
 #
-# the following stuff will be stored only if they are all available
+# the following stuff will be stored 
+#   only if they are all available
 # 1. username / screen_name
 # 2. recent tweets 
 # 3. geo location / time 
@@ -24,26 +25,27 @@ import pickle
 import time
 
 
-def getFriendList(api, screen_name='HornbyLucy'):
-    # given a screen_name, list all his friends and followers' id
-    print "getFriendList"
-    friends = api.friends_ids(screen_name)
-    followers = api.followers_ids(screen_name)
+def getFriendList(api, uid):
+    # given a uid, list all his friends and followers' id
+    friends = api.friends_ids(uid)
+    followers = api.followers_ids(uid)
     users = list(set(friends) | set(followers))
     return users[1:15]
 
 
 def recordTimeLine(api, data, uid):
-    print "recordTimeLine"
     if data.has_key(uid):
         return 1
+    print "getUser"
     user = api.get_user(uid)
     items = []
     if user.geo_enabled:
+        print "getTimeline"
         timeline = api.user_timeline(uid)
         for tl in timeline:
             if tl.coordinates:
                 coor = tl.coordinates['coordinates']
+                print "getGeoCode ", coor
                 res  = api.reverse_geocode(lat=coor[1], long=coor[0])
                 country = res['result']['places'][0]['country']
                 fname = res['result']['places'][0]['full_name']
@@ -68,17 +70,13 @@ def saveData(data, name='bia660.pkl'):
     return 1
     
 
-def thread(api, data, screen_name='xxingzhong', depth=3):
-    print "thread"
+def thread(api, data, uid=99004419, depth=3):
     if depth < 0:
         return 1
-    depth = depth - 1
-    print '\t'*(3-depth),
-    print screen_name
-    for f in getFriendList(api, screen_name):
-        recordTimeLine(api, data, f)
-        user = api.get_user(f)
-        thread(api, data, user.screen_name, depth)
+    print '\t'*(3-depth), uid
+    for i in getFriendList(api, uid):
+        recordTimeLine(api, data, i)
+        thread(api, data, i, depth-1)
 
 def getLimit(api):
     limit = api.rate_limit_status()
@@ -103,19 +101,19 @@ if __name__ == '__main__':
         data = loadData()
         try :
             thread(api, data)
-        except :
-            print "API Wrong"
-            saveData(data)
+        except tweepy.error.TweepError as e:
+            print e
             remain, restart = getLimit(api)
             if remain < 1 :
                 secs = restart - time.time()
                 print "sleep %s s"%secs
-                pp.pprint( data )
-                time.sleep(secs+1)
+                for i in range(100):
+                    time.sleep(secs/500)
+                    print "%s of 500 ..."%i              
                 print "wakeup"
-        pp.pprint( data )
-        saveData(data)
-        break
+        finally:
+            pp.pprint( data )
+            saveData(data)
     
 
 
