@@ -27,8 +27,12 @@ import time
 
 def getFriendList(api, uid):
     # given a uid, list all his friends and followers' id
-    friends = api.friends_ids(uid)
-    followers = api.followers_ids(uid)
+    print "getFriendList"
+    try:
+        friends = api.friends_ids(uid)
+        followers = api.followers_ids(uid)
+    except:
+        return []
     users = list(set(friends) | set(followers))
     return users[1:15]
 
@@ -46,10 +50,13 @@ def recordTimeLine(api, data, uid):
             if tl.coordinates:
                 coor = tl.coordinates['coordinates']
                 print "getGeoCode ", coor
-                res  = api.reverse_geocode(lat=coor[1], long=coor[0])
-                country = res['result']['places'][0]['country']
-                fname = res['result']['places'][0]['full_name']
-                items.append( (uid, fname, country, tl.created_at) )
+                try:
+                    res  = api.reverse_geocode(lat=coor[1], long=coor[0])
+                    country = res['result']['places'][0]['country']
+                    fname = res['result']['places'][0]['full_name']
+                    items.append( (uid, fname, country, tl.created_at) )
+                except tweepy.error.TweepError as e:
+                    print "GeoCode no idea"
     data[uid] = {'name':user.screen_name, 'items':items}
     
 
@@ -70,7 +77,7 @@ def saveData(data, name='bia660.pkl'):
     return 1
     
 
-def thread(api, data, uid=99004419, depth=3):
+def thread(api, data, uid=135486484, depth=3):
     if depth < 0:
         return 1
     print '\t'*(3-depth), uid
