@@ -31,10 +31,12 @@ def getFriendList(api, uid):
     try:
         friends = api.friends_ids(uid)
         followers = api.followers_ids(uid)
-    except:
+    except tweepy.error.TweepError as e:
+    	print e
+    	print "faild to get FriendList"
         return []
     users = list(set(friends) | set(followers))
-    return users[1:15]
+    return users
 
 
 def recordTimeLine(api, data, uid):
@@ -45,7 +47,11 @@ def recordTimeLine(api, data, uid):
     items = []
     if user.geo_enabled:
         print "getTimeline"
-        timeline = api.user_timeline(uid, count=40)
+        try:
+            timeline = api.user_timeline(uid, count=40)
+        except tweepy.error.TweepError:
+            timeline = []
+            print "can not get timeline"
         for tl in timeline:
             if tl.coordinates:
                 coor = tl.coordinates['coordinates']
@@ -54,7 +60,7 @@ def recordTimeLine(api, data, uid):
                     res  = api.reverse_geocode(lat=coor[1], long=coor[0])
                     country = res['result']['places'][0]['country']
                     fname = res['result']['places'][0]['full_name']
-                    items.append( (uid, fname, country, tl.created_at) )
+                    items.append( (uid, fname, country, tl.created_at, coor) )
                 except tweepy.error.TweepError as e:
                     print "GeoCode no idea"
     data[uid] = {'name':user.screen_name, 'items':items}
@@ -77,7 +83,7 @@ def saveData(data, name='bia660.pkl'):
     return 1
     
 
-def thread(api, data, uid=135486484, depth=3):
+def thread(api, data, uid=17825367, depth=3):
     if depth < 0:
         return 1
     print '\t'*(3-depth), uid
@@ -90,6 +96,21 @@ def getLimit(api):
     pp.pprint(limit)
     return limit['remaining_hits'] , limit['reset_time_in_seconds']
 
+
+def wait():
+    remain, restart = getLimit(api)
+    if remain < 1 :
+    	secs = restart - time.time()
+        print "sleep %s s"%secs
+        for i in range(100):
+            if secs/500 > 1 : 
+                t = secs/500
+            else:
+                t = 1
+            time.sleep(t)
+            print "%s of 500 ..."%i              
+    print "wakeup"
+    
 if __name__ == '__main__':
     print "Hello Stevens"
     # constant key/secret for twitter app
@@ -106,20 +127,14 @@ if __name__ == '__main__':
     
     while(1):
         data = loadData()
+        wait()
         try :
             thread(api, data)
         except tweepy.error.TweepError as e:
             print e
-            remain, restart = getLimit(api)
-            if remain < 1 :
-                secs = restart - time.time()
-                print "sleep %s s"%secs
-                for i in range(100):
-                    time.sleep(secs/500)
-                    print "%s of 500 ..."%i              
-                print "wakeup"
+            wait()
         finally:
-            pp.pprint( data )
+            #pp.pprint( data )
             saveData(data)
     
 
